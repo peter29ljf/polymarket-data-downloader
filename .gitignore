@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+logs/
+*.log
+
+# 本地凭据与配置（勿提交）
+data/.env
+data/config.json
+
+.DS_Store
+.idea/
+.vscode/

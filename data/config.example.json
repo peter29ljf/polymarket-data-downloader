@@ -1,0 +1,9 @@
+{
+  "slippage_pct": 5.0,
+  "slippage_mode": "partial",
+  "web_host": "0.0.0.0",
+  "web_port": 8000,
+  "mcp_port": 8001,
+  "clob_host": "https://clob.polymarket.com",
+  "chain_id": 137
+}

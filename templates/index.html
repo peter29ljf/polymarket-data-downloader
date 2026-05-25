@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polymarket Trader — MCP</title>
+<style>
+  :root {
+    --bg:        #0b0f19;
+    --surface:   #131929;
+    --surface2:  #1a2236;
+    --border:    #1e2d45;
+    --border2:   #263550;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --muted2:    #94a3b8;
+    --blue:      #3b82f6;
+    --blue-dim:  rgba(59,130,246,.15);
+    --purple:    #8b5cf6;
+    --green:     #22c55e;
+    --green-dim: rgba(34,197,94,.15);
+    --red:       #ef4444;
+    --red-dim:   rgba(239,68,68,.15);
+    --yellow:    #f59e0b;
+    --yellow-dim:rgba(245,158,11,.15);
+    --radius:    10px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;}
+  .app{max-width:1100px;margin:0 auto;padding:20px 16px 60px;}
+
+  /* ── Header ── */
+  .header{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:20px;}
+  .header-title{font-size:1.5em;font-weight:700;background:linear-gradient(135deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .header-sub{font-size:.82em;color:var(--muted);margin-top:2px;}
+  .mcp-badge{display:flex;align-items:center;gap:6px;background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);padding:6px 14px;border-radius:20px;font-size:.82em;font-weight:600;}
+  .mcp-dot{width:7px;height:7px;border-radius:50%;background:var(--blue);animation:blink 1.8s infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* ── Tabs ── */
+  .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:20px;overflow-x:auto;}
+  .tab{flex:1;min-width:max-content;padding:9px 16px;border:none;background:transparent;color:var(--muted);border-radius:8px;cursor:pointer;font-size:.88em;font-weight:500;transition:all .2s;white-space:nowrap;}
+  .tab:hover{color:var(--text);background:var(--surface2);}
+  .tab.active{background:var(--blue);color:#fff;font-weight:600;}
+
+  /* ── Panels ── */
+  .panel{display:none;}.panel.active{display:block;}
+
+  /* ── Cards ── */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:16px;}
+  .card-title{font-size:.95em;font-weight:600;color:var(--muted2);margin-bottom:18px;display:flex;align-items:center;gap:8px;}
+  .card-title span{font-size:1.1em;}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  @media(max-width:640px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+
+  /* ── Form ── */
+  .form-group{margin-bottom:14px;}
+  label{display:block;font-size:.82em;color:var(--muted);margin-bottom:5px;font-weight:500;}
+  input,select,textarea{width:100%;padding:9px 12px;background:var(--bg);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:.9em;transition:border-color .2s,box-shadow .2s;outline:none;}
+  input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-dim);}
+  input[readonly]{color:var(--muted2);cursor:default;}
+  input[type="range"]{padding:4px 0;accent-color:var(--blue);}
+  .input-group{display:flex;gap:8px;}
+  .input-group input{flex:1;}
+
+  /* ── Buttons ── */
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border:none;border-radius:8px;font-size:.88em;font-weight:600;cursor:pointer;transition:all .18s;white-space:nowrap;}
+  .btn:hover{filter:brightness(1.12);transform:translateY(-1px);}
+  .btn:active{transform:translateY(0);}
+  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none;filter:none;}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-purple{background:var(--purple);color:#fff;}
+  .btn-green{background:var(--green);color:#fff;}
+  .btn-red{background:var(--red);color:#fff;}
+  .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border2);}
+  .btn-sm{padding:5px 12px;font-size:.82em;}
+  .btn-row{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+
+  /* ── Credential output ── */
+  .cred-box{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:14px 16px;font-family:'JetBrains Mono','Fira Code',monospace;font-size:.82em;color:var(--muted2);word-break:break-all;line-height:1.7;}
+  .cred-row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;}
+  .cred-key{color:var(--muted);font-size:.78em;min-width:130px;}
+  .cred-val{color:var(--blue);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cred-copy{cursor:pointer;color:var(--muted);font-size:.75em;padding:2px 6px;border-radius:4px;transition:color .15s;}
+  .cred-copy:hover{color:var(--text);}
+
+  /* ── Slippage ── */
+  .slip-mode{display:flex;gap:10px;margin-top:8px;}
+  .slip-mode label{display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 16px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);color:var(--text);font-size:.88em;font-weight:500;flex:1;transition:all .2s;}
+  .slip-mode input[type=radio]{width:auto;accent-color:var(--blue);}
+  .slip-mode label.selected{border-color:var(--blue);background:var(--blue-dim);}
+  .slip-preview{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-top:14px;font-size:.85em;color:var(--muted2);line-height:1.8;}
+  .slip-preview strong{color:var(--text);}
+
+  /* ── Trade panel ── */
+  .token-result{display:flex;gap:12px;margin-top:10px;}
+  .token-card{flex:1;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .2s;position:relative;}
+  .token-card:hover,.token-card.selected{border-color:var(--blue);background:var(--blue-dim);}
+  .token-card.selected::after{content:'✓';position:absolute;top:8px;right:10px;color:var(--blue);font-weight:700;}
+  .token-label{font-size:.75em;color:var(--muted);margin-bottom:4px;}
+  .token-id{font-size:.72em;font-family:monospace;color:var(--muted2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .token-price{font-size:1.3em;font-weight:700;margin:4px 0;}
+  .token-yes .token-price{color:var(--green);}
+  .token-no .token-price{color:var(--red);}
+  .market-list-table{width:100%;border-collapse:collapse;font-size:.85em;}
+  .market-list-table th{text-align:left;padding:8px 10px;color:var(--muted);border-bottom:1px solid var(--border);}
+  .market-list-table td{padding:8px 10px;border-bottom:1px solid rgba(30,45,69,.5);}
+  .market-list-table tr:hover{background:rgba(255,255,255,.03);cursor:pointer;}
+  .market-list-table tr.selected{background:var(--blue-dim);}
+  .market-list-table .col-title{max-width:280px;}
+  .market-list-table .col-outcome{width:70px;}
+  .market-list-table .col-mid{width:80px;}
+  .market-list-table .col-action{width:80px;}
+  .trade-action-row{display:flex;gap:10px;align-items:flex-end;margin-top:14px;}
+  .trade-action-row .form-group{flex:1;margin-bottom:0;}
+
+  /* ── USDC Balance ── */
+  .balance-bar{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(59,130,246,.1),rgba(139,92,246,.1));border:1px solid var(--blue);border-radius:10px;padding:14px 20px;margin-bottom:18px;}
+  .balance-amount{font-size:1.6em;font-weight:700;color:var(--blue);}
+  .balance-label{font-size:.78em;color:var(--muted);margin-top:2px;}
+  .balance-right{text-align:right;}
+  .balance-allowance{font-size:.85em;color:var(--muted2);}
+
+  /* ── Positions table ── */
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:.85em;}
+  th{text-align:left;padding:9px 10px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:11px 10px;border-bottom:1px solid rgba(30,45,69,.6);color:var(--muted2);vertical-align:middle;}
+  tr:hover td{background:rgba(255,255,255,.02);}
+  .market-title{color:var(--text);font-weight:500;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .market-meta{font-size:.75em;color:var(--muted);margin-top:2px;}
+  .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:10px;font-size:.76em;font-weight:600;}
+  .badge-yes{background:var(--green-dim);color:var(--green);}
+  .badge-no{background:var(--red-dim);color:var(--red);}
+  .badge-success{background:var(--green-dim);color:var(--green);}
+  .badge-partial{background:var(--yellow-dim);color:var(--yellow);}
+  .badge-cancel{background:var(--red-dim);color:var(--red);}
+  .badge-buy{background:var(--green-dim);color:var(--green);}
+  .badge-sell{background:var(--red-dim);color:var(--red);}
+  .pnl-pos{color:var(--green);}
+  .pnl-neg{color:var(--red);}
+
+  /* ── Stats row ── */
+  .stats-row{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap;}
+  .stat-pill{flex:1;min-width:120px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:12px 16px;text-align:center;}
+  .stat-pill-val{font-size:1.4em;font-weight:700;color:var(--blue);}
+  .stat-pill-lbl{font-size:.75em;color:var(--muted);margin-top:3px;}
+
+  /* ── Filter row ── */
+  .filter-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .filter-btn{padding:5px 14px;border-radius:16px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:.8em;cursor:pointer;transition:all .15s;}
+  .filter-btn.active,.filter-btn:hover{background:var(--blue-dim);border-color:var(--blue);color:var(--blue);}
+
+  /* ── Alerts / toasts ── */
+  .alert{padding:10px 16px;border-radius:8px;font-size:.88em;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .alert-info{background:var(--blue-dim);border:1px solid var(--blue);color:var(--blue);}
+  .alert-warning{background:var(--yellow-dim);border:1px solid var(--yellow);color:var(--yellow);}
+  .empty{text-align:center;padding:36px;color:var(--muted);font-size:.9em;}
+
+  /* ── MCP Info ── */
+  .mcp-tool{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:14px 16px;margin-bottom:10px;}
+  .mcp-tool-name{font-family:monospace;font-size:.9em;color:var(--blue);font-weight:600;margin-bottom:4px;}
+  .mcp-tool-desc{font-size:.82em;color:var(--muted2);}
+  .mcp-url{font-family:monospace;font-size:.78em;color:var(--muted);margin-top:4px;}
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar{width:5px;height:5px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="header-title">Polymarket Trader</div>
+      <div class="header-sub">交易工具 · MCP 服务器 · Web UI</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
+      <div class="mcp-badge"><span class="mcp-dot"></span> MCP 运行中 · :8001</div>
+      <div style="font-size:.75em;color:var(--muted);">Flask Web · :8000</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab(0)">🔑 API 配置</button>
+    <button class="tab" onclick="switchTab(1)">⚡ 滑点设置</button>
+    <button class="tab" onclick="switchTab(2)">📈 快速交易</button>
+    <button class="tab" onclick="switchTab(3)">💼 持仓管理</button>
+    <button class="tab" onclick="switchTab(4)">📋 交易记录</button>
+    <button class="tab" onclick="switchTab(5)">🔌 MCP 工具</button>
+  </div>
+
+  <!-- ══════════════════════════════════
+       Tab 0 · API 配置
+  ══════════════════════════════════ -->
+  <div class="panel active" id="panel-0">
+    <div class="card">
+      <div class="card-title"><span>🔑</span> 钱包凭据</div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>私钥 PRIVATE_KEY</label>
+          <input type="password" id="pk" placeholder="0x 或原始私钥（64位十六进制）"/>
+        </div>
+        <div class="form-group">
+          <label>钱包地址 WALLET_ADDRESS</label>
+          <input type="text" id="wallet" placeholder="0x..."/>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" id="generate-creds-btn" onclick="generateCreds()">⚙️ 生成 API 凭据</button>
+        <button type="button" class="btn btn-ghost" onclick="saveCreds()">💾 保存到 .env</button>
+      </div>
+      <div id="generate-env-error" class="alert alert-warning" style="display:none;margin-top:10px;" role="alert"></div>
+    </div>
+
+    <div class="card" style="border-color:rgba(239,68,68,.3);">
+      <div class="card-title"><span>🗑️</span> 危险操作</div>
+      <div style="font-size:.85em;color:var(--muted2);margin-bottom:16px;line-height:1.7;">
+        清除所有本地数据，包括：
+        <ul style="margin:8px 0 0 18px;color:var(--muted);">
+          <li>API 凭据（<code>data/.env</code>）</li>
+          <li>交易历史记录（<code>data/trades.json</code>）</li>
+        </ul>
+        <div style="margin-top:8px;color:var(--red);font-size:.82em;">⚠️ 此操作不可撤销，链上持仓不受影响</div>
+      </div>
+      <button type="button" class="btn btn-red" id="clear-all-btn" onclick="clearAllData()">🗑️ 清除所有数据</button>
+    </div>
+
+    <div class="card" id="creds-card" style="display:none;">
+      <div class="card-title"><span>✅</span> 已生成凭据 <span style="font-size:.75em;color:var(--green);font-weight:400;" id="creds-saved-hint">已保存至 data/.env</span></div>
+      <div class="cred-box">
+        <div class="cred-row">
+          <span class="cred-key">CLOB_API_KEY</span>
+          <span class="cred-val" id="cred-api-key">—</span>
+          <span class="cred-copy" title="复制" onclick="copyCred('cred-api-key')">⎘</span>
+        </div>
+        <div class="cred-row">
+          <span class="cred-key">CLOB_SECRET</span>
+          <span class="cred-val" id="cred-secret">—</span>
+          <span class="cred-copy" title="复制" onclick="copyCred('cred-secret')">⎘</span>
+        </div>
+        <div class="cred-row" style="margin-bottom:0">
+          <span class="cred-key">CLOB_PASS_PHRASE</span>
+          <span class="cred-val" id="cred-passphrase">—</span>
+          <span class="cred-copy" title="复制" onclick="copyCred('cred-passphrase')">⎘</span>
+        </div>
+      </div>
+      <div class="alert alert-info" style="margin-top:14px;margin-bottom:0;">
+        ℹ️ 凭据已通过 <code>py_clob_client.create_api_key()</code> 从私钥派生，可直接用于 CLOB 交易 API 的 L2 签名认证。
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       Tab 1 · 滑点设置
+  ══════════════════════════════════ -->
+  <div class="panel" id="panel-1">
+    <div class="card">
+      <div class="card-title"><span>⚡</span> 滑点保护配置</div>
+      <div class="form-group">
+        <label>最大允许滑点：<strong id="slip-label" style="color:var(--blue)">5.0%</strong></label>
+        <input type="range" id="slip-range" min="0.5" max="20" step="0.5" value="5"
+               oninput="document.getElementById('slip-label').textContent=parseFloat(this.value).toFixed(1)+'%';updateSlipPreview()"/>
+        <div style="display:flex;justify-content:space-between;font-size:.75em;color:var(--muted);margin-top:4px;">
+          <span>0.5%（严格）</span><span>10%（宽松）</span><span>20%（极宽）</span>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:18px;">
+        <label>超出滑点时的处理方式</label>
+        <div class="slip-mode">
+          <label class="selected" id="mode-partial">
+            <input type="radio" name="slip-mode" value="partial" checked onchange="updateSlipPreview()"/>
+            部分成交
+            <div style="font-size:.75em;color:var(--muted);margin-top:2px;font-weight:400;">仅成交滑点范围内的部分</div>
+          </label>
+          <label id="mode-cancel">
+            <input type="radio" name="slip-mode" value="cancel" onchange="updateSlipPreview()"/>
+            取消整单
+            <div style="font-size:.75em;color:var(--muted);margin-top:2px;font-weight:400;">任意超出则取消全部</div>
+          </label>
+        </div>
+      </div>
+
+      <div class="slip-preview" id="slip-preview">
+        <strong>当前逻辑说明：</strong><br/>
+        下单时系统将查询订单簿，模拟吃单计算加权均价。<br/>
+        基准价 = midpoint（中间价）；若均价超过 <strong>midpoint × 1.050</strong>，<br/>
+        将自动截断订单量，仅成交滑点 ≤ 5% 的部分并下单，超出部分丢弃。
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveSlipConfig()">💾 保存配置</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>📊</span> 滑点检查流程</div>
+      <div style="display:flex;flex-direction:column;gap:10px;font-size:.85em;color:var(--muted2);">
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="background:var(--blue);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.75em;font-weight:700;flex-shrink:0;">1</div>
+          <div>调用 <code style="color:var(--blue)">GET /midpoint?token_id=xxx</code> 获取当前中间价作为基准</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="background:var(--blue);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.75em;font-weight:700;flex-shrink:0;">2</div>
+          <div>调用 <code style="color:var(--blue)">GET /book?token_id=xxx</code> 获取订单簿，模拟按需求量吃单</div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="background:var(--blue);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.75em;font-weight:700;flex-shrink:0;">3</div>
+          <div>计算加权均价，得出实际滑点 <code style="color:var(--yellow)">(avg_price − mid) / mid</code></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;">
+          <div style="background:var(--blue);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.75em;font-weight:700;flex-shrink:0;">4</div>
+          <div>根据「部分成交 / 取消整单」模式决策，提交 FOK 市价单</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       Tab 2 · 快速交易
+  ══════════════════════════════════ -->
+  <div class="panel" id="panel-2">
+    <div class="card">
+      <div class="card-title"><span>🔍</span> 获取 Token ID</div>
+      <div class="input-group">
+        <input type="text" id="slug-input" placeholder="输入市场 slug，例如：will-trump-win-2024"/>
+        <button class="btn btn-ghost" onclick="fetchTokenIds()">查询</button>
+      </div>
+
+      <div class="token-result" style="margin-top:14px;flex-direction:column;" id="token-result">
+        <div class="empty" id="token-empty">输入 slug 后点击「查询」，将列出该事件下所有市场，选择一项后再执行交易</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>💸</span> 执行交易</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div>
+          <div style="font-size:.8em;color:var(--muted);">当前 midpoint</div>
+          <div style="font-size:1.5em;font-weight:700;color:var(--blue);" id="midpoint-val">—</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:.8em;color:var(--muted);">选中 Token</div>
+          <div style="font-size:.9em;color:var(--text);" id="selected-label">—</div>
+        </div>
+      </div>
+      <div class="trade-action-row">
+        <div class="form-group">
+          <label>金额（USDC）</label>
+          <input type="number" id="trade-amount" placeholder="50" value="50" min="1" step="1"/>
+        </div>
+        <button class="btn btn-green" style="margin-bottom:0" onclick="executeTrade('buy')">▲ 买入</button>
+        <button class="btn btn-red" style="margin-bottom:0" onclick="executeTrade('sell')">▼ 卖出</button>
+      </div>
+      <div class="alert alert-warning" style="margin-top:12px;" id="trade-warning">
+        ⚠️ 卖出前将自动检查持仓。若持仓数量不足，将只卖持有部分。
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       Tab 3 · 持仓管理
+  ══════════════════════════════════ -->
+  <div class="panel" id="panel-3">
+    <!-- USDC Balance -->
+    <div class="balance-bar">
+      <div>
+        <div style="font-size:.78em;color:var(--muted);margin-bottom:4px;">可用 USDC.e 余额</div>
+        <div class="balance-amount" id="balance-amount">—</div>
+      </div>
+      <div class="balance-right">
+        <div class="balance-allowance" id="balance-allowance">—</div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:6px;" onclick="refreshBalance()">↻ 刷新</button>
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-pill">
+        <div class="stat-pill-val" id="pos-count">0</div>
+        <div class="stat-pill-lbl">持仓数量</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-pill-val" id="pos-pnl" style="color:var(--green);">$0</div>
+        <div class="stat-pill-lbl">总盈亏</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-pill-val" id="pos-value" style="color:var(--yellow);">$0</div>
+        <div class="stat-pill-lbl">持仓总值</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div class="card-title" style="margin-bottom:0;"><span>💼</span> 当前持仓 <span id="positions-wallet" style="font-size:.75em;color:var(--muted);font-weight:400;margin-left:8px;"></span></div>
+        <button class="btn btn-ghost btn-sm" onclick="refreshPositions()">↻ 刷新持仓</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>市场 / Token</th>
+              <th>方向</th>
+              <th>数量</th>
+              <th>均价</th>
+              <th>现价</th>
+              <th>当前价值</th>
+              <th>盈亏</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="pos-tbody">
+            <tr><td colspan="8" class="empty">加载中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="font-size:.75em;color:var(--muted);margin-top:10px;">
+        ⚡ 已过滤当前价值 ≤ $2 的灰尘持仓 · 数据来源：data-api.polymarket.com/positions
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       Tab 4 · 交易记录
+  ══════════════════════════════════ -->
+  <div class="panel" id="panel-4">
+    <div class="stats-row">
+      <div class="stat-pill">
+        <div class="stat-pill-val" id="trade-total">0</div>
+        <div class="stat-pill-lbl">总交易次数</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-pill-val" id="trade-success" style="color:var(--green);">0</div>
+        <div class="stat-pill-lbl">成功成交</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-pill-val" id="trade-partial" style="color:var(--yellow);">0</div>
+        <div class="stat-pill-lbl">部分/调整成交</div>
+      </div>
+      <div class="stat-pill">
+        <div class="stat-pill-val" id="trade-volume">$0</div>
+        <div class="stat-pill-lbl">总成交金额</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div class="card-title" style="margin-bottom:0;"><span>📋</span> 历史记录</div>
+        <button class="btn btn-ghost btn-sm">↓ 导出 CSV</button>
+      </div>
+      <div class="filter-row">
+        <button class="filter-btn active" data-filter="all">全部</button>
+        <button class="filter-btn" data-filter="buy">买入</button>
+        <button class="filter-btn" data-filter="sell">卖出</button>
+        <button class="filter-btn" data-filter="filled">成功</button>
+        <button class="filter-btn" data-filter="partial">部分/调整</button>
+        <button class="filter-btn" data-filter="fail">失败/取消</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>方向</th>
+              <th>Token</th>
+              <th>请求</th>
+              <th>实际/均价</th>
+              <th>滑点</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody id="trades-tbody">
+            <tr><td colspan="7" class="empty">加载中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="font-size:.75em;color:var(--muted);margin-top:10px;">
+        「调整后成交」= 请求卖出量超过持仓，系统自动截断为实际持仓量后成交
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       Tab 5 · MCP 工具
+  ══════════════════════════════════ -->
+  <div class="panel" id="panel-5">
+    <div class="card">
+      <div class="card-title"><span>🔌</span> MCP 服务器信息</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+        <div>
+          <div style="font-size:.78em;color:var(--muted);">SSE 地址</div>
+          <code style="color:var(--blue);">http://localhost:8001/sse</code>
+        </div>
+        <div>
+          <div style="font-size:.78em;color:var(--muted);">传输协议</div>
+          <span style="color:var(--text);">Server-Sent Events (SSE)</span>
+        </div>
+        <div>
+          <div style="font-size:.78em;color:var(--muted);">工具数量</div>
+          <span style="color:var(--blue);font-weight:700;">6</span>
+        </div>
+      </div>
+      <div class="cred-box" style="font-size:.8em;">
+        <div style="color:var(--muted);margin-bottom:4px;">// Cursor / Claude Desktop 配置</div>
+        {<br/>
+        &nbsp;&nbsp;"mcpServers": {<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;"polymarket": {<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"url": "<span style="color:var(--blue);">http://localhost:8001/sse</span>"<br/>
+        &nbsp;&nbsp;&nbsp;&nbsp;}<br/>
+        &nbsp;&nbsp;}<br/>
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>🛠</span> 已注册工具</div>
+
+      <div class="mcp-tool">
+        <div class="mcp-tool-name">market_buy(token_id, amount)</div>
+        <div class="mcp-tool-desc">市价买入，自动应用滑点保护逻辑（partial / cancel 模式）。amount 单位为 USDC。</div>
+      </div>
+      <div class="mcp-tool">
+        <div class="mcp-tool-name">market_sell(token_id, amount)</div>
+        <div class="mcp-tool-desc">市价卖出，自动检查持仓是否充足（不足则截断），并应用滑点保护与签名类型自动检测。</div>
+      </div>
+      <div class="mcp-tool">
+        <div class="mcp-tool-name">get_midpoint(token_id)</div>
+        <div class="mcp-tool-desc">查询指定 token 的当前中间价。</div>
+        <div class="mcp-url">GET https://clob.polymarket.com/midpoint?token_id={token_id}</div>
+      </div>
+      <div class="mcp-tool">
+        <div class="mcp-tool-name">get_token_ids(slug)</div>
+        <div class="mcp-tool-desc">从市场 slug 获取 YES / NO 两个 Token ID，用于买卖操作。</div>
+        <div class="mcp-url">GET https://gamma-api.polymarket.com/events?slug={slug}</div>
+      </div>
+      <div class="mcp-tool">
+        <div class="mcp-tool-name">get_positions()</div>
+        <div class="mcp-tool-desc">查询当前钱包的全部持仓列表（过滤 currentValue ≤ $2 的灰尘持仓）。</div>
+        <div class="mcp-url">GET https://data-api.polymarket.com/positions?user={wallet}&amp;sizeThreshold=0</div>
+      </div>
+      <div class="mcp-tool">
+        <div class="mcp-tool-name">get_balance()</div>
+        <div class="mcp-tool-desc">查询钱包可用 USDC.e 余额和授权额度（balance ÷ 1e6 = USDC）。</div>
+        <div class="mcp-url">GET https://clob.polymarket.com/balance-allowance?asset_type=COLLATERAL&amp;signature_type=EOA</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+const API = { base: '' };
+function switchTab(i) {
+  document.querySelectorAll('.tab').forEach((t,j) => t.classList.toggle('active', i===j));
+  document.querySelectorAll('.panel').forEach((p,j) => p.classList.toggle('active', i===j));
+  if (i===3) { refreshBalance(); refreshPositions(); }
+  if (i===4) loadTrades();
+}
+
+let slipPct = 5, slipMode = 'partial';
+function updateSlipPreview() {
+  slipPct = parseFloat(document.getElementById('slip-range').value);
+  slipMode = document.querySelector('input[name="slip-mode"]:checked').value;
+  document.getElementById('slip-label').textContent = slipPct.toFixed(1) + '%';
+  document.getElementById('mode-partial').classList.toggle('selected', slipMode==='partial');
+  document.getElementById('mode-cancel').classList.toggle('selected', slipMode==='cancel');
+  const mult = (1 + slipPct/100).toFixed(3);
+  const desc = slipMode === 'partial'
+    ? '将自动截断订单量，仅成交滑点 ≤ ' + slipPct + '% 的部分并下单。'
+    : '若实际均价超过 midpoint × ' + mult + '，则取消整笔交易。';
+  document.getElementById('slip-preview').innerHTML =
+    '<strong>当前逻辑说明：</strong><br/>下单时查询订单簿，模拟吃单计算加权均价。<br/>基准价 = midpoint；若均价超过 <strong>midpoint × ' + mult + '</strong>，<br/>' + desc;
+}
+
+async function loadConfig() {
+  try {
+    const r = await fetch(API.base + '/api/config');
+    const c = await r.json();
+    document.getElementById('slip-range').value = c.slippage_pct || 5;
+    document.querySelector('input[name="slip-mode"][value="' + (c.slippage_mode || 'partial') + '"]').checked = true;
+    updateSlipPreview();
+  } catch (e) { console.warn('loadConfig', e); }
+}
+
+async function saveSlipConfig() {
+  try {
+    const r = await fetch(API.base + '/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slippage_pct: slipPct, slippage_mode: slipMode })
+    });
+    const d = await r.json();
+    if (d.success) showToast('滑点配置已保存'); else showToast(d.error || '保存失败');
+  } catch (e) { showToast('保存失败'); }
+}
+
+async function apiEnvStatus() {
+  try {
+    const r = await fetch(API.base + '/api/env-status');
+    const d = await r.json();
+    if (d.has_env) {
+      document.getElementById('cred-api-key').textContent = d.api_key || '(已配置)';
+      document.getElementById('cred-secret').textContent = '(已配置)';
+      document.getElementById('cred-passphrase').textContent = '(已配置)';
+      document.getElementById('creds-card').style.display = 'block';
+    }
+  } catch (e) {}
+}
+
+async function generateCreds() {
+  const btn = document.getElementById('generate-creds-btn');
+  const pk = document.getElementById('pk').value.trim();
+  const wallet = document.getElementById('wallet').value.trim();
+  const errEl = document.getElementById('generate-env-error');
+  if (errEl) errEl.textContent = '';
+  if (!pk || !wallet) {
+    showToast('请填写私钥和钱包地址');
+    if (errEl) errEl.textContent = '请填写私钥和钱包地址';
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = '⚙️ 生成中...'; }
+  try {
+    const r = await fetch(API.base + '/api/generate-env', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ private_key: pk, wallet_address: wallet })
+    });
+    let d;
+    try {
+      d = await r.json();
+    } catch (_) {
+      const text = await r.text();
+      throw new Error(r.status + ': ' + (text.slice(0, 200) || '非 JSON 响应'));
+    }
+    if (r.ok && d.success) {
+      document.getElementById('cred-api-key').textContent = d.CLOB_API_KEY || '';
+      document.getElementById('cred-secret').textContent = d.CLOB_SECRET || '';
+      document.getElementById('cred-passphrase').textContent = d.CLOB_PASS_PHRASE || '';
+      document.getElementById('creds-card').style.display = 'block';
+      document.getElementById('creds-card').scrollIntoView({ behavior: 'smooth' });
+      showToast('API 凭据已生成并保存至 data/.env');
+    } else {
+      const msg = d.error || ('HTTP ' + r.status) || '生成失败';
+      showToast(msg);
+      if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+    }
+  } catch (e) {
+    const msg = e.message || '请求失败';
+    showToast(msg);
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '⚙️ 生成 API 凭据'; }
+}
+
+function copyCred(id) {
+  const el = document.getElementById(id);
+  if (!el || el.textContent === '—' || el.textContent.indexOf('已配置') >= 0) return;
+  navigator.clipboard.writeText(el.textContent).then(() => showToast('已复制'));
+}
+
+function saveCreds() { showToast('生成凭据时已自动保存到 data/.env'); }
+
+let tokenData = { items: [] };
+let selectedTokenId = '';
+let selectedLabel = '—';
+let selectedMid = null;
+
+async function fetchTokenIds() {
+  const slug = document.getElementById('slug-input').value.trim();
+  if (!slug) { showToast('请输入 slug'); return; }
+  const resultEl = document.getElementById('token-result');
+  resultEl.innerHTML = '<div class="empty">查询中…</div>';
+  try {
+    const r = await fetch(API.base + '/api/token-ids?slug=' + encodeURIComponent(slug));
+    const d = await r.json();
+    if (d.error || !d.items || !d.items.length) {
+      resultEl.innerHTML = '<div class="empty">' + escapeHtml(d.error || '未找到市场') + '</div>';
+      return;
+    }
+    tokenData.items = d.items;
+    var html = '<p style="font-size:.85em;color:var(--muted);margin-bottom:10px;">共 ' + d.items.length + ' 个交易目标，点击一行选择后可在下方执行交易</p>';
+    html += '<div class="table-wrap"><table class="market-list-table"><thead><tr><th class="col-title">市场 / 结果</th><th class="col-outcome">方向</th><th class="col-mid">中间价</th><th class="col-action">操作</th></tr></thead><tbody>';
+    d.items.forEach(function(it, idx) {
+      var title = (it.groupItemTitle || it.tokenid || '').toString();
+      var outcome = (it.outcome || '').toString();
+      var badge = outcome.toUpperCase().indexOf('YES') >= 0 ? 'badge-yes' : 'badge-no';
+      html += '<tr class="market-row" data-tokenid="' + escapeHtml(it.tokenid) + '" data-title="' + escapeHtml(title) + '"><td class="col-title">' + escapeHtml(title) + '</td><td><span class="badge ' + badge + '">' + escapeHtml(outcome) + '</span></td><td class="col-mid mid-cell">—</td><td class="col-action"><button type="button" class="btn btn-ghost btn-sm">选择</button></td></tr>';
+    });
+    html += '</tbody></table></div>';
+    resultEl.innerHTML = html;
+    selectedTokenId = '';
+    selectedLabel = '—';
+    selectedMid = null;
+    document.getElementById('midpoint-val').textContent = '—';
+    document.getElementById('selected-label').textContent = '—';
+    document.querySelectorAll('.market-row').forEach(function(row) {
+      row.addEventListener('click', function() {
+        var tid = row.getAttribute('data-tokenid');
+        var ttl = row.getAttribute('data-title') || '';
+        if (tid) selectMarketItem(tid, ttl);
+      });
+    });
+  } catch (e) {
+    resultEl.innerHTML = '<div class="empty">请求失败</div>';
+  }
+}
+
+function selectMarketItem(tokenid, title) {
+  selectedTokenId = tokenid;
+  selectedLabel = title || (tokenid.length > 12 ? tokenid.slice(0,8)+'...'+tokenid.slice(-6) : tokenid);
+  document.getElementById('selected-label').textContent = selectedLabel;
+  document.querySelectorAll('.market-list-table tbody tr').forEach(function(tr) {
+    tr.classList.toggle('selected', tr.getAttribute('data-tokenid') === tokenid);
+  });
+  document.getElementById('midpoint-val').textContent = '…';
+  fetch(API.base + '/api/midpoint?token_id=' + encodeURIComponent(tokenid))
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.mid != null) {
+        selectedMid = d.mid;
+        document.getElementById('midpoint-val').textContent = '$' + Number(d.mid).toFixed(3);
+        document.querySelectorAll('.market-list-table tbody tr').forEach(function(tr) {
+          if (tr.getAttribute('data-tokenid') === tokenid) {
+            var cell = tr.querySelector('.mid-cell');
+            if (cell) cell.textContent = '$' + Number(d.mid).toFixed(3);
+          }
+        });
+      } else {
+        document.getElementById('midpoint-val').textContent = '—';
+      }
+    })
+    .catch(function() { document.getElementById('midpoint-val').textContent = '—'; });
+}
+
+async function executeTrade(side) {
+  if (!selectedTokenId) { showToast('请先查询并选择 Token'); return; }
+  const amount = parseFloat(document.getElementById('trade-amount').value);
+  if (!(amount > 0)) { showToast('请输入有效金额'); return; }
+  const url = side === 'buy' ? (API.base + '/api/trade/buy') : (API.base + '/api/trade/sell');
+  const body = side === 'buy' ? { token_id: selectedTokenId, amount } : { token_id: selectedTokenId, amount };
+  try {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const d = await r.json();
+    if (d.success) showToast((side==='buy'?'买入':'卖出') + ' 成功'); else showToast(d.error || '失败');
+    if (d.success) loadTrades();
+  } catch (e) { showToast('请求失败'); }
+}
+
+async function refreshBalance() {
+  const el = document.getElementById('balance-amount');
+  const allowEl = document.getElementById('balance-allowance');
+  el.textContent = '…';
+  try {
+    const r = await fetch(API.base + '/api/balance');
+    const d = await r.json();
+    if (d.error) { el.textContent = d.error; allowEl.textContent = ''; return; }
+    el.textContent = '$' + (d.balance != null ? Number(d.balance).toFixed(2) : '0');
+    allowEl.textContent = '授权额度：$' + (d.allowance != null ? Number(d.allowance).toFixed(2) : '0');
+  } catch (e) { el.textContent = '—'; allowEl.textContent = ''; }
+}
+
+async function refreshPositions() {
+  const tbody = document.getElementById('pos-tbody');
+  tbody.innerHTML = '<tr><td colspan="8" class="empty">加载中…</td></tr>';
+  try {
+    const r = await fetch(API.base + '/api/positions');
+    const d = await r.json();
+    if (d.error && !d.positions) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">' + escapeHtml(d.error) + '</td></tr>';
+      return;
+    }
+    // 官方 API 返回 Position[]，字段见 OpenAPI schema
+    const raw = Array.isArray(d.positions) ? d.positions : [];
+    const walletDisplay = (d.wallet && d.wallet.length >= 16) ? ('钱包: ' + d.wallet.slice(0, 10) + '…' + d.wallet.slice(-6)) : '';
+    var walletEl = document.getElementById('positions-wallet');
+    if (walletEl) walletEl.textContent = walletDisplay;
+    const positions = raw.filter(function(p) {
+      var v = p.currentValue;
+      return (v !== undefined && v !== null) && Number(v) > 2;
+    });
+    const hiddenCount = raw.length - positions.length;
+    document.getElementById('pos-count').textContent = positions.length;
+    var totalPnl = 0, totalVal = 0;
+    positions.forEach(function(p) {
+      totalPnl += Number(p.cashPnl) || 0;
+      totalVal += Number(p.currentValue) || 0;
+    });
+    document.getElementById('pos-pnl').textContent = (totalPnl >= 0 ? '+' : '') + '$' + totalPnl.toFixed(2);
+    document.getElementById('pos-pnl').style.color = totalPnl >= 0 ? 'var(--green)' : 'var(--red)';
+    document.getElementById('pos-value').textContent = '$' + totalVal.toFixed(2);
+    if (!positions.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="empty">暂无持仓' + (hiddenCount > 0 ? '（已过滤 currentValue≤2 共 ' + hiddenCount + ' 条）' : '') + '</td></tr>';
+      return;
+    }
+    tbody.innerHTML = positions.map(function(p) {
+      var asset = (p.asset != null) ? String(p.asset) : '';
+      var short = asset.length > 12 ? asset.slice(0,8)+'...'+asset.slice(-6) : asset;
+      var outcome = (p.outcome != null) ? String(p.outcome) : '—';
+      var size = (Number(p.size) != null && !isNaN(p.size)) ? Number(p.size).toFixed(2) : '0.00';
+      var avgPrice = (p.avgPrice != null && !isNaN(p.avgPrice)) ? Number(p.avgPrice).toFixed(4) : '—';
+      var curPrice = (p.curPrice != null && !isNaN(p.curPrice)) ? Number(p.curPrice).toFixed(4) : '—';
+      var currentValue = (p.currentValue != null && !isNaN(p.currentValue)) ? Number(p.currentValue).toFixed(2) : '0.00';
+      var initialValue = Number(p.initialValue) || 0;
+      var cashPnl = (p.cashPnl != null && !isNaN(p.cashPnl)) ? Number(p.cashPnl) : (Number(p.currentValue) || 0) - initialValue;
+      var pnlCl = cashPnl >= 0 ? 'pnl-pos' : 'pnl-neg';
+      var percentPnl = (p.percentPnl != null && !isNaN(p.percentPnl)) ? Number(p.percentPnl).toFixed(1) : (initialValue > 0 ? ((cashPnl / initialValue) * 100).toFixed(1) : '—');
+      var title = (p.title != null) ? String(p.title).slice(0, 50) : (p.slug != null ? String(p.slug) : '');
+      var eventSlug = (p.eventSlug != null) ? String(p.eventSlug) : '';
+      var sub = escapeHtml(outcome) + (eventSlug ? ' · ' + escapeHtml(eventSlug) : '') + (short ? ' · <code>' + escapeHtml(short) + '</code>' : '');
+      var badge = outcome.toUpperCase().indexOf('YES') >= 0 ? 'yes' : 'no';
+      return '<tr><td><div class="market-title">' + escapeHtml(title) + '</div><div class="market-meta">' + sub + '</div></td><td><span class="badge badge-' + badge + '">' + escapeHtml(outcome) + '</span></td><td>' + size + '</td><td>' + (avgPrice === '—' ? '—' : '$' + avgPrice) + '</td><td>' + (curPrice === '—' ? '—' : '$' + curPrice) + '</td><td>$' + currentValue + '</td><td class="' + pnlCl + '">' + (cashPnl >= 0 ? '+' : '') + '$' + cashPnl.toFixed(2) + ' <span style="font-size:.78em">(' + percentPnl + '%)</span></td><td><button class="btn btn-red btn-sm" data-asset="' + escapeHtml(asset) + '" data-size="' + size + '" onclick="closePositionFromBtn(this)">平仓</button></td></tr>';
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">加载失败: ' + escapeHtml(String(e.message || e)) + '</td></tr>';
+  }
+}
+
+function closePositionFromBtn(btn) {
+  const asset = btn.getAttribute('data-asset');
+  const size = btn.getAttribute('data-size');
+  if (asset && size) closePosition(asset, parseFloat(size));
+}
+
+function escapeHtml(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+async function closePosition(tokenId, size) {
+  if (!confirm('确定平仓 ' + size + ' shares？')) return;
+  try {
+    const r = await fetch(API.base + '/api/positions/close', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token_id: tokenId, amount: parseFloat(size) })
+    });
+    const d = await r.json();
+    if (d.success) { showToast('平仓成功'); refreshPositions(); refreshBalance(); } else showToast(d.error || '平仓失败');
+  } catch (e) { showToast('请求失败'); }
+}
+
+let tradesFilter = 'all';
+let allTrades = [];
+
+async function loadTrades() {
+  try {
+    const r = await fetch(API.base + '/api/trades');
+    allTrades = await r.json();
+    const ok = allTrades.filter(x => (x.status || '').indexOf('filled') >= 0 || x.status === 'filled');
+    const partial = allTrades.filter(x => (x.status || '').indexOf('partial') >= 0 || (x.status || '').indexOf('adjusted') >= 0);
+    let vol = 0;
+    allTrades.forEach(x => { vol += (x.amount_usdc || 0) + (x.amount_shares || 0) * (x.avg_price || 0); });
+    document.getElementById('trade-total').textContent = allTrades.length;
+    document.getElementById('trade-success').textContent = ok.length;
+    document.getElementById('trade-partial').textContent = partial.length;
+    document.getElementById('trade-volume').textContent = '$' + vol.toFixed(2);
+    renderTrades();
+  } catch (e) {
+    document.getElementById('trades-tbody').innerHTML = '<tr><td colspan="7" class="empty">加载失败</td></tr>';
+  }
+}
+
+function renderTrades() {
+  let list = allTrades;
+  if (tradesFilter === 'buy') list = list.filter(x => x.side === 'buy');
+  else if (tradesFilter === 'sell') list = list.filter(x => x.side === 'sell');
+  else if (tradesFilter === 'filled') list = list.filter(x => x.status === 'filled');
+  else if (tradesFilter === 'partial') list = list.filter(x => (x.status || '').indexOf('partial') >= 0 || (x.status || '').indexOf('adjusted') >= 0);
+  else if (tradesFilter === 'fail') list = list.filter(x => (x.status || '').indexOf('fail') >= 0 || (x.status || '').indexOf('cancel') >= 0 || (x.status || '').indexOf('cancelled') >= 0);
+  const tbody = document.getElementById('trades-tbody');
+  if (!list.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty">暂无记录</td></tr>'; return; }
+  tbody.innerHTML = list.map(t => {
+    const time = (t.created_at || '').replace('T',' ').slice(0, 16);
+    const side = t.side === 'buy' ? '<span class="badge badge-buy">买入</span>' : '<span class="badge badge-sell">卖出</span>';
+    const tok = (t.token_id || '').toString();
+    const short = tok.length > 12 ? tok.slice(0,8)+'...'+tok.slice(-6) : tok;
+    const req = t.amount_usdc != null ? '$'+t.amount_usdc : (t.amount_shares != null ? t.amount_shares + ' shares' : '—');
+    const act = t.avg_price != null ? '$'+t.avg_price.toFixed(3) : (t.error || '—');
+    const slip = t.slippage_pct != null ? (t.slippage_pct >= 0 ? '+' : '') + t.slippage_pct.toFixed(2) + '%' : '—';
+    let status = t.status || '—';
+    if (status === 'filled') status = '<span class="badge badge-success">成交</span>';
+    else if ((status+'').indexOf('partial') >= 0 || (status+'').indexOf('adjusted') >= 0) status = '<span class="badge badge-partial">' + status + '</span>';
+    else if ((status+'').indexOf('cancel') >= 0 || (status+'').indexOf('fail') >= 0) status = '<span class="badge badge-cancel">' + status + '</span>';
+    else status = '<span class="badge">' + status + '</span>';
+    return '<tr><td style="white-space:nowrap;color:var(--muted)">' + time + '</td><td>' + side + '</td><td><div style="color:var(--text)">' + short + '</div></td><td>' + req + '</td><td>' + act + '</td><td>' + slip + '</td><td>' + status + '</td></tr>';
+  }).join('');
+}
+
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    tradesFilter = this.getAttribute('data-filter') || 'all';
+    renderTrades();
+  });
+});
+
+let toastTimer;
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e3a5f;border:1px solid #3b82f6;color:#93c5fd;padding:10px 22px;border-radius:20px;font-size:.88em;font-weight:500;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.5);transition:opacity .3s;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.opacity = '0', 2600);
+}
+
+async function clearAllData() {
+  const confirmed = confirm(
+    '⚠️ 确认清除所有数据？\n\n将删除以下内容：\n• API 凭据（data/.env）\n• 交易历史记录（data/trades.json）\n\n此操作不可撤销，链上持仓不受影响。'
+  );
+  if (!confirmed) return;
+
+  const btn = document.getElementById('clear-all-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '清除中…'; }
+
+  try {
+    const r = await fetch(API.base + '/api/clear-all', { method: 'POST' });
+    const d = await r.json();
+    if (d.success) {
+      showToast('✅ 数据已全部清除');
+      // 重置凭据展示区
+      document.getElementById('creds-card').style.display = 'none';
+      document.getElementById('cred-api-key').textContent = '—';
+      document.getElementById('cred-secret').textContent = '—';
+      document.getElementById('cred-passphrase').textContent = '—';
+      document.getElementById('pk').value = '';
+      document.getElementById('wallet').value = '';
+      // 重置交易记录
+      allTrades = [];
+      document.getElementById('trades-tbody').innerHTML = '<tr><td colspan="7" class="empty">暂无记录</td></tr>';
+      document.getElementById('trade-total').textContent = '0';
+      document.getElementById('trade-success').textContent = '0';
+      document.getElementById('trade-partial').textContent = '0';
+      document.getElementById('trade-volume').textContent = '$0';
+    } else {
+      const errMsg = (d.errors || []).join('；') || '清除失败';
+      showToast('❌ ' + errMsg);
+    }
+  } catch (e) {
+    showToast('❌ 请求失败：' + (e.message || e));
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '🗑️ 清除所有数据'; }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadConfig();
+  apiEnvStatus();
+  refreshPositions();
+  loadTrades();
+});
+</script>
+</body>
+</html>
